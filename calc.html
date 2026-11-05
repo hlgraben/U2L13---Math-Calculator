@@ -1,0 +1,254 @@
+<html>
+<head>
+    <title> Calculator </title>
+    <style>
+        body {
+            background-color: rgb(255, 245, 254);
+            font-family: Garamond, sans-serif;
+            font-size: 26px;
+        }
+
+        .numButton {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            background-color: rgb(250, 220, 250);
+            font-family: Garamond, sans-serif;
+        }
+
+        .functionButton {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            background-color: rgb(248, 202, 249);
+            font-family: Garamond, sans-serif;
+        }
+    </style>
+    </head>
+    
+<body>
+    <!-- equation inputted is visible here--> 
+    <p>Type your equation below:</p>
+    <input type="text" placeholder="Enter Equation" id="equation">
+    
+    <!--first row of buttons-->
+    <div>
+        <button class="numButton" onclick="appendNumber('7')">7</button>
+        <button class="numButton" onclick="appendNumber('8')">8</button>
+        <button class="numButton" onclick="appendNumber('9')">9</button>
+        <button class="functionButton" onclick="appendNumber('/')">/</button>
+        <button class="functionButton" onclick="appendNumber('Math.round(')">≈</button>
+        <button class="functionButton" onclick="appendNumber('(')">(</button>
+
+        <!-- = function button --> 
+    </div>
+    <!--second row of buttons--> 
+
+     <!--second row of buttons-->
+    <div>
+        <button class="numButton" onclick="appendNumber('4')">4</button>
+        <button class="numButton" onclick="appendNumber('5')">5</button>
+        <button class="numButton" onclick="appendNumber('6')">6</button>
+        <button class="functionButton" onclick="appendNumber('*')">*</button>
+        <button class="functionButton" onclick="appendNumber('Math.pow(')">^</button>
+        <button class="functionButton" onclick="appendNumber(')')">)</button>
+    </div>
+    
+    <!--third row of buttons--> 
+     <!--third row of buttons-->
+    <div>
+        <button class="numButton" onclick="appendNumber('1')">1</button>
+        <button class="numButton" onclick="appendNumber('2')">2</button>
+        <button class="numButton" onclick="appendNumber('3')">3</button>
+        <button class="functionButton" onclick="appendNumber('-')">-</button>
+        <button class="functionButton" onclick="appendNumber('Math.PI')">π</button>
+         <button class="numButton" onclick="appendNumber('.')">.</button>
+        <!--all function buttons(besides =)--> 
+        <!-- = function button --> 
+    </div>
+
+    <div>
+        <!-- clear button--> 
+        
+        <button class="functionButton" onclick="clearScreen()">C</button>
+        <button class="numButton" onclick="appendNumber('0')">0</button>
+        <button class="numButton" onclick="appendNumber(',')">,</button>
+        <button class="functionButton" onclick="appendNumber('+')">+</button>
+        <button class="functionButton" onclick="calculate()">=</button>
+    </div>
+
+    <div>
+        <p id="result"> </p>
+        <p id="mean"> </p>
+        <p id="median"> </p>
+        <p id="mode"> </p>
+        <p id="minimum"> </p>
+        <p id="maximum"> </p>
+    </div>
+
+    <input type="file" id="fileToLoad">
+    <button class="button" onclick="checkFileProperty()">Load Selected</button>
+
+    <script>
+        function clearScreen() {
+            document.getElementById('equation').value = '';
+        }
+
+        // adds the number into the equation box when the button is clicked
+        function appendNumber(number) {
+            document.getElementById('equation').value += number;
+        }
+
+        function checkFileProperty(){
+            let x = document.getElementById("fileToLoad");
+            let txt = "";
+            if ('files' in x) {
+                if (x.files.length == 0) {
+                    txt = "Select one or more files...";
+                } else {
+                    loadFileAsText();
+                }
+            } 
+            else {
+                if (x.value == "") {
+                    txt += "Select one or more files...";
+                } else {
+                    txt += "The files property is not supported by your browser!";
+                    txt += "<br>The path of the selected file: " + x.value; // If the browser does not support the files property, it will return the path of the selected file instead. 
+                }
+            }
+            document.getElementById("result").innerHTML = txt;
+        }
+
+        function loadFileAsText() {
+            let fileToLoad = document.getElementById("fileToLoad").files[0];
+            let fileReader = new FileReader();
+            
+            fileReader.onload = function(fileLoadedEvent) {
+                let textFromFileLoaded = fileLoadedEvent.target.result;
+                
+                // --- ADD THIS LINE TO FIX THE RTF ISSUE ---
+                if (textFromFileLoaded.startsWith("{\\rtf1")) {
+                    // This strips away all the hidden RTF layout code and leaves just your text
+                    textFromFileLoaded = textFromFileLoaded.replace(/\\([a-z]+(-?\d+)? ?|'[\da-f]{2}|.)|[\{\}]/gi, '').trim();
+                }
+                // ------------------------------------------
+
+                document.getElementById("equation").value = textFromFileLoaded; 
+            };
+            
+            fileReader.readAsText(fileToLoad, "UTF-8");
+        }
+
+
+        function splitFunction() {
+            let arr = [];
+            let str = document.getElementById("equation").value;
+            arr = str.split(",");
+            return arr;
+        }
+
+        // calculates the equation when the = button is clicked
+                // Main function that directs traffic when the = button is clicked
+        function calculate() { 
+            const equation = document.getElementById('equation').value; 
+            
+            // Clear any old statistical outputs from the screen before starting
+            clearStatsDisplays();
+
+            // If the input contains a comma, run statistical calculations
+            if (equation.includes(',')) {
+                calculateStats(equation);
+            } else {
+                // Otherwise, run standard math (+, -, *, /)
+                calculateStandard(equation);
+            }
+        }
+
+        // --- NEW FUNCTION: LIST STATISTICS ---
+        function calculateStats(inputStr) {
+            try {
+                // Split by comma, turn into numbers, and filter out spaces or empty entries
+                let arr = inputStr.split(",")
+                                  .map(num => parseFloat(num.trim()))
+                                  .filter(num => !isNaN(num));
+
+                if (arr.length === 0) {
+                    document.getElementById("result").textContent = "Please enter valid numbers separated by commas.";
+                    return;
+                }
+
+                // Sort ascending (critical for median, min, and max calculations)
+                arr.sort((a, b) => a - b);
+
+                // 1. Mean
+                const sum = arr.reduce((acc, val) => acc + val, 0);
+                const mean = sum / arr.length;
+
+                // 2. Median
+                const mid = Math.floor(arr.length / 2);
+                const median = arr.length % 2 !== 0 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+
+                // 3. Min and Max
+                const min = arr[0];
+                const max = arr[arr.length - 1];
+
+                // 4. Mode
+                const frequencyMap = {};
+                let maxFreq = 0;
+                let modes = [];
+
+                arr.forEach(num => {
+                    frequencyMap[num] = (frequencyMap[num] || 0) + 1;
+                    if (frequencyMap[num] > maxFreq) {
+                        maxFreq = frequencyMap[num];
+                    }
+                });
+
+                for (const num in frequencyMap) {
+                    if (frequencyMap[num] === maxFreq) {
+                        modes.push(num);
+                    }
+                }
+                
+                // If every number appears equally, there is no unique mode
+                const modeResult = modes.length === Object.keys(frequencyMap).length ? "None" : modes.join(", ");
+
+                // Send the values directly to your separate HTML paragraphs
+                document.getElementById("result").textContent = "Statistics Results:";
+                document.getElementById("mean").textContent = "Mean (Average): " + mean.toFixed(2);
+                document.getElementById("median").textContent = "Median (Middle): " + median;
+                document.getElementById("mode").textContent = "Mode (Most Frequent): " + modeResult;
+                document.getElementById("minimum").textContent = "Min (Smallest): " + min;
+                document.getElementById("maximum").textContent = "Max (Largest): " + max;
+
+            } catch (error) {
+                document.getElementById("result").textContent = "Error calculating stats.";
+            }
+        }
+
+        // --- NEW FUNCTION: STANDARD ARITHMETIC ---
+        function calculateStandard(equation) {
+            try {
+                let result = eval(equation); 
+                document.getElementById("result").textContent = result; 
+            } catch (error) {
+                document.getElementById("result").textContent = "Error";
+            }
+        }
+
+        // Helper to wipe out the stats numbers when running a brand-new calculation
+        function clearStatsDisplays() {
+            document.getElementById("mean").textContent = "";
+            document.getElementById("median").textContent = "";
+            document.getElementById("mode").textContent = "";
+            document.getElementById("minimum").textContent = "";
+            document.getElementById("maximum").textContent = "";
+        }
+
+
+
+    </script>
+    
+</body>
+</html>
